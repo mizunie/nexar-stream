@@ -1,0 +1,42 @@
+{
+  "name": "nexar-stream",
+  "version": "1.0.0",
+  "description": "WebRTC WHIP streaming broadcast library for Nexar services.",
+  "keywords": [
+    "webrtc",
+    "whip",
+    "streaming",
+    "broadcast"
+  ],
+  "homepage": "https://nexar.com.co",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mizunie/nexar-stream.git"
+  },
+  "license": "MIT",
+  "author": "Jhoan",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsc",
+    "lint": "tsc --noEmit",
+    "release:patch": "npm version patch && git push && git push --tags",
+    "release:minor": "npm version minor && git push && git push --tags",
+    "release:major": "npm version major && git push && git push --tags",
+    "prepublishOnly": "npm run build"
+  },
+  "devDependencies": {
+    "typescript": "~5.6.0"
+  }
+}
