@@ -308,19 +308,17 @@ export class WhipClient {
       try {
         const msg = JSON.parse(evt.data);
 
-        if (msg.type === 'ice' && msg.candidate && this._pc) {
-          // ICE candidate remoto
-          this._pc.addIceCandidate(new RTCIceCandidate(msg.candidate));
-        } else if (msg.type === 'viewers') {
-          // Actualizar conteo de viewers
-          this._viewers = msg.count ?? 0;
+        // Backend envía { status: 'info', viewers: X }
+        // Se actualiza el contador Y se forwardea al componente
+        if (msg.status === 'info' && typeof msg.viewers === 'number') {
+          this._viewers = msg.viewers;
           this._emit('state', this._getState());
-        } else {
-          // Forward de otros mensajes JSON (datos del juego)
-          this._emit('message', evt.data);
         }
+
+        // Forward de TODOS los mensajes JSON al componente (string crudo)
+        this._emit('message', evt.data);
       } catch {
-        // Texto plano → forward
+        // Texto plano (ej: "idUnico;gane|123") → forward
         this._emit('message', evt.data);
       }
     };
