@@ -1,4 +1,4 @@
-# @nexar/stream
+# nexar-stream
 
 Librería **cero dependencias, sin framework** para transmisión de video/audio vía WebRTC (WHIP) y para reproducir streams (WHEP).
 
@@ -9,7 +9,7 @@ Funciona con vanilla JS, React, Vue, Angular, Svelte o cualquier runtime de nave
 ## Instalación
 
 ```bash
-pnpm add @nexar/stream
+pnpm add nexar-stream
 ```
 
 ---
@@ -17,7 +17,7 @@ pnpm add @nexar/stream
 ## WHIP (transmisor) – Uso rápido
 
 ```typescript
-import { WhipClient } from "@nexar/stream";
+import { WhipClient } from "nexar-stream";
 
 const client = new WhipClient();
 
@@ -65,7 +65,7 @@ client.destroy();
 ## WHEP (reproductor) – Uso rápido
 
 ```typescript
-import { WhepClient } from "@nexar/stream";
+import { WhepClient } from "nexar-stream";
 
 const player = new WhepClient();
 
@@ -244,7 +244,7 @@ Envía una cadena por el WebSocket (ej: `"gane|idJuego"`).
 ```typescript
 // stream.service.ts
 import { Injectable, signal, computed } from "@angular/core";
-import { WhipClient, type StreamStatus } from "@nexar/stream";
+import { WhipClient, type StreamStatus } from "nexar-stream";
 
 @Injectable({ providedIn: "root" })
 export class StreamService {
@@ -280,7 +280,7 @@ export class StreamService {
 // whep.service.ts
 import { Injectable, signal } from "@angular/core";
 import { Subject } from "rxjs";
-import { WhepClient } from "@nexar/stream";
+import { WhepClient } from "nexar-stream";
 
 @Injectable({ providedIn: "root" })
 export class WhepService {
@@ -319,7 +319,7 @@ export class WhepService {
 
 ```tsx
 import { useRef, useState, useEffect } from "react";
-import { WhipClient, type StreamConfig } from "@nexar/stream";
+import { WhipClient, type StreamConfig } from "nexar-stream";
 
 export function useStream(previewRef: React.RefObject<HTMLVideoElement>, config: StreamConfig) {
   const [status, setStatus] = useState("idle");
@@ -340,7 +340,7 @@ export function useStream(previewRef: React.RefObject<HTMLVideoElement>, config:
 
 ```tsx
 import { useRef, useState, useEffect } from "react";
-import { WhepClient } from "@nexar/stream";
+import { WhepClient } from "nexar-stream";
 
 export function useWhepPlayer(token: string) {
   const videoRef = useRef<HTMLVideoElement>(null);
