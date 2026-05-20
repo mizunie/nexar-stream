@@ -105,7 +105,6 @@ export class WhipClient {
     }
 
     await this._enumerateDevices();
-    this._connectWS();
     await this._initStream();
   }
 
@@ -120,6 +119,7 @@ export class WhipClient {
   setToken(token: string): void {
     this._config.token = token;
     _log(this._debug, 'Token actualizado');
+    this._connectWS();
   }
 
   // ═══════════════════════════════════════════
