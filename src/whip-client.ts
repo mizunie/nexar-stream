@@ -105,6 +105,7 @@ export class WhipClient {
     }
 
     await this._enumerateDevices();
+    this._connectWS();
     await this._initStream();
   }
 
@@ -244,9 +245,6 @@ export class WhipClient {
       // 8. Procesar answer del servidor
       const answer = await response.text();
       await this._pc.setRemoteDescription({ type: 'answer', sdp: answer });
-
-      // 9. Conectar WebSocket (ICE + mensajes de aplicación)
-      this._connectWS();
 
       this._setStatus('connected');
       _log(this._debug, 'Transmisión activa');
