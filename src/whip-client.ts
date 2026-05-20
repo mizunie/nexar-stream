@@ -91,8 +91,18 @@ export class WhipClient {
     this._config = config;
     this._isMuted = config.startMuted ?? true;
 
+    this._onDeviceChange = this._handleDeviceChange.bind(this);
+    navigator.mediaDevices.addEventListener('devicechange', this._onDeviceChange);
+
     await this._enumerateDevices();
     await this._initStream();
+  }
+
+  private _onDeviceChange: (() => void) | null = null;
+
+  private async _handleDeviceChange(): Promise<void> {
+    _log(this._debug, 'devicechange detectado, re-enumerando...');
+    await this._enumerateDevices();
   }
 
   /** Actualiza el token en caliente (sin reiniciar dispositivos) */
@@ -154,6 +164,8 @@ export class WhipClient {
     }
 
     this._previewEl.srcObject = this._stream;
+
+    await this._enumerateDevices();
   }
 
   // ═══════════════════════════════════════════
@@ -280,6 +292,11 @@ export class WhipClient {
 
     // Limpiar listeners
     this._listeners.clear();
+
+    if (this._onDeviceChange) {
+      navigator.mediaDevices.removeEventListener('devicechange', this._onDeviceChange);
+      this._onDeviceChange = null;
+    }
 
     _log(this._debug, 'destroy completado');
   }
@@ -438,6 +455,8 @@ export class WhipClient {
       await sender.replaceTrack(newTrack);
       _log(this._debug, 'Track reemplazado en PC:', kind);
     }
+
+    await this._enumerateDevices();
   }
 
   // ═══════════════════════════════════════════
