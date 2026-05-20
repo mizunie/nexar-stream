@@ -94,6 +94,16 @@ export class WhipClient {
     this._onDeviceChange = this._handleDeviceChange.bind(this);
     navigator.mediaDevices.addEventListener('devicechange', this._onDeviceChange);
 
+    try {
+      const tempStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      // 2. Liberar los tracks temporales para no bloquear la cámara
+      tempStream.getTracks().forEach(t => t.stop());
+    } catch (err) {
+      // El usuario denegó el permiso → igual delegamos al cliente para que
+      // maneje el error de forma natural cuando intente obtener el stream.
+      console.warn('[StreamService] Permiso denegado o error:', err);
+    }
+
     await this._enumerateDevices();
     await this._initStream();
   }
