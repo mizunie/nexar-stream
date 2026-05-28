@@ -36,6 +36,8 @@ export class WhipClient {
   private _pingTimer: ReturnType<typeof setInterval> | null = null;
   private _reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
+  private _wsStopped = false;
+
   private _listeners = new Map<string, EventHandler[]>();
 
   // ─── Helpers de URL ───
@@ -118,6 +120,7 @@ export class WhipClient {
   /** Actualiza el token en caliente (sin reiniciar dispositivos) */
   setToken(token: string): void {
     this._config.token = token;
+    this._wsStopped = false;
     _log(this._debug, 'Token actualizado');
     this._connectWS();
   }
@@ -186,6 +189,8 @@ export class WhipClient {
   async start(): Promise<void> {
     if (this._pc) { _log(this._debug, 'Transmisión ya activa'); return; }
     if (!this._config.token) throw new Error('StreamConfig.token es requerido para iniciar transmisión');
+    
+    this._connectWS();
     this._setStatus('connecting');
 
     try {
@@ -202,7 +207,7 @@ export class WhipClient {
         this._pc.addTrack(tracks[i], this._stream!);
       }
 
-      // 3. ICE candidate → enviar por WebSocket (cuando esté abierto)
+      // 3. ICE candidate
       this._pc.onicecandidate = (e) => {
         if (!e.candidate) {
           _log(this._debug, 'ICE Gathering Complete');
@@ -252,7 +257,7 @@ export class WhipClient {
       _log(this._debug, 'Error en start:', err);
       this._setStatus('error');
       this._emit('error', err instanceof Error ? err : new Error(String(err)));
-      this._cleanup();
+      this._cleanupPC();
     }
   }
 
@@ -276,9 +281,15 @@ export class WhipClient {
       _log(this._debug, 'No se pudo eliminar el ingest:', err);
     }
 
-    // 2. Limpiar WS + PC (pero NO el stream local)
-    this._cleanup();
+    // 2. Limpiar solo PC, el WebSocket se mantiene conectado
+    this._cleanupPC();
     this._setStatus('idle');
+  }
+
+  disconnectWs(): void {
+    this._wsStopped = true;
+    this._cleanupWS();
+    _log(this._debug, 'WS detenido por el usuario (no se reconectará)');
   }
 
   // ═══════════════════════════════════════════
@@ -286,7 +297,9 @@ export class WhipClient {
   // ═══════════════════════════════════════════
 
   destroy(): void {
-    this._cleanup();
+    this._wsStopped = true;
+    this._cleanupWS();
+    this._cleanupPC();
 
     // Detener tracks del stream local
     if (this._stream) {
@@ -314,49 +327,59 @@ export class WhipClient {
   // ═══════════════════════════════════════════
 
   private _connectWS(): void {
-    const url = `${this._wsUrl}/ws/rtc?token=${this._config.token}`;
+    // Si ya está abierto o conectándose, no duplicar
+    if (this._ws) {
+      if (this._ws.readyState === WebSocket.OPEN || this._ws.readyState === WebSocket.CONNECTING) {
+        _log(this._debug, 'WS ya está abierto/conectando, se omite');
+        return;
+      }
+      // Si está cerrando o cerrado, limpiar y recrear
+      this._cleanupWS();
+    }
+    if (!this._config.token) {
+      _log(this._debug, 'WS: sin token, no se conecta');
+      return;
+    }
+
+    var url = this._wsUrl + '/ws/rtc?token=' + this._config.token;
     _log(this._debug, 'WS connect →', url);
     this._ws = new WebSocket(url);
 
-    this._ws.onopen = () => {
-      _log(this._debug, 'WS abierto');
-      this._reconnectAttempts = 0;
-      this._startPing();
+    var self = this;
+    this._ws.onopen = function () {
+      _log(self._debug, 'WS abierto');
+      self._reconnectAttempts = 0;
+      self._startPing();
     };
 
-    this._ws.onmessage = (evt) => {
+    this._ws.onmessage = function (evt) {
       if (typeof evt.data !== 'string') return;
-
-      // Ping interno
       if (evt.data === 'pong') return;
 
       try {
-        const msg = JSON.parse(evt.data);
-
-        // Backend envía { status: 'info', viewers: X }
-        // Se actualiza el contador Y se forwardea al componente
+        var msg = JSON.parse(evt.data);
         if (msg.status === 'info' && typeof msg.viewers === 'number') {
-          this._viewers = msg.viewers;
-          this._emit('state', this._getState());
+          self._viewers = msg.viewers;
+          self._emit('state', self._getState());
         }
-
-        // Forward de TODOS los mensajes JSON al componente (string crudo)
-        this._emit('message', evt.data);
-      } catch {
-        // Texto plano (ej: "idUnico;gane|123") → forward
-        this._emit('message', evt.data);
+        self._emit('message', evt.data);
+      } catch (_) {
+        self._emit('message', evt.data);
       }
     };
 
-    this._ws.onerror = () => {
-      _log(this._debug, 'WS error');
-      this._setStatus('error');
+    this._ws.onerror = function () {
+      _log(self._debug, 'WS error');
+      if (self._status !== 'reconnecting') {
+        self._setStatus('error');
+      }
+      // La reconexión se maneja en onclose para evitar doble intento
     };
 
-    this._ws.onclose = () => {
-      _log(this._debug, 'WS cerrado');
-      if (this._status === 'connected') {
-        this._scheduleReconnect();
+    this._ws.onclose = function (evt) {
+      _log(self._debug, 'WS cerrado (código:', evt.code, ')');
+      if (!self._wsStopped) {
+        self._scheduleReconnect();
       }
     };
   }
@@ -370,6 +393,7 @@ export class WhipClient {
 
   private _reconnectAttempts = 0;
   private _scheduleReconnect(): void {
+    if (this._wsStopped) return;
     if (this._reconnectTimer) clearTimeout(this._reconnectTimer);
 
     const base = 1000;
@@ -391,10 +415,19 @@ export class WhipClient {
   }
 
   // ═══════════════════════════════════════════
-  // Cleanup (WS + PC, sin tocar stream local)
+  // Cleanup
   // ═══════════════════════════════════════════
 
-  private _cleanup(): void {
+  private _cleanupPC(): void {
+    if (this._pc) {
+      this._pc.onicecandidate = null;
+      this._pc.oniceconnectionstatechange = null;
+      this._pc.close();
+      this._pc = null;
+    }
+  }
+
+  private _cleanupWS(): void {
     if (this._pingTimer) { clearInterval(this._pingTimer); this._pingTimer = null; }
     if (this._reconnectTimer) { clearTimeout(this._reconnectTimer); this._reconnectTimer = null; }
     this._reconnectAttempts = 0;
@@ -408,13 +441,6 @@ export class WhipClient {
         this._ws.close();
       }
       this._ws = null;
-    }
-
-    if (this._pc) {
-      this._pc.onicecandidate = null;
-      this._pc.oniceconnectionstatechange = null;
-      this._pc.close();
-      this._pc = null;
     }
   }
 
