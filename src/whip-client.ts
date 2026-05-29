@@ -286,12 +286,6 @@ export class WhipClient {
     this._setStatus('idle');
   }
 
-  disconnectWs(): void {
-    this._wsStopped = true;
-    this._cleanupWS();
-    _log(this._debug, 'WS detenido por el usuario (no se reconectará)');
-  }
-
   // ═══════════════════════════════════════════
   // Destroy (limpieza total)
   // ═══════════════════════════════════════════
@@ -345,10 +339,13 @@ export class WhipClient {
     _log(this._debug, 'WS connect →', url);
     this._ws = new WebSocket(url);
 
+    this._emitWsStatus('connecting');
+
     var self = this;
     this._ws.onopen = function () {
       _log(self._debug, 'WS abierto');
       self._reconnectAttempts = 0;
+      self._emitWsStatus('connected');
       self._startPing();
     };
 
@@ -370,6 +367,7 @@ export class WhipClient {
 
     this._ws.onerror = function () {
       _log(self._debug, 'WS error');
+      self._emitWsStatus('error');
       if (self._status !== 'reconnecting') {
         self._setStatus('error');
       }
@@ -379,9 +377,16 @@ export class WhipClient {
     this._ws.onclose = function (evt) {
       _log(self._debug, 'WS cerrado (código:', evt.code, ')');
       if (!self._wsStopped) {
+        self._emitWsStatus('disconnected');
         self._scheduleReconnect();
+      } else {
+        self._emitWsStatus('stopped');
       }
     };
+  }
+
+  private _emitWsStatus(status: 'connecting' | 'connected' | 'disconnected' | 'reconnecting' | 'error' | 'stopped'): void {
+    this._emit('ws', { status });
   }
 
   private _startPing(): void {
@@ -402,6 +407,8 @@ export class WhipClient {
     this._reconnectAttempts++;
 
     this._setStatus('reconnecting');
+    this._emitWsStatus('reconnecting');
+
     this._reconnectTimer = setTimeout(() => {
       _log(this._debug, `Intento de reconexión WS #${this._reconnectAttempts} (${delay}ms)...`);
       this._connectWS();
@@ -569,5 +576,12 @@ export class WhipClient {
     } else {
       _log(this._debug, 'WS no disponible para enviar mensaje');
     }
+  }
+
+  disconnectWs(): void {
+    this._wsStopped = true;
+    this._cleanupWS();
+    this._emitWsStatus('stopped');
+    _log(this._debug, 'WS detenido por el usuario (no se reconectará)');
   }
 }

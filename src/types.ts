@@ -17,6 +17,7 @@ export interface StreamConfig {
 }
 
 export type StreamStatus = 'idle' | 'connecting' | 'connected' | 'error' | 'reconnecting';
+export type WsStatus = 'connecting' | 'connected' | 'disconnected' | 'reconnecting' | 'error' | 'stopped';
 
 export interface DeviceState {
   videoDevices: MediaDeviceInfo[];
@@ -36,7 +37,8 @@ export type WhipEvent =
   | { type: 'devices'; data: DeviceState }
   | { type: 'message'; data: string }
   | { type: 'error'; data: Error }
-  | { type: 'status'; data: StreamStatus };
+  | { type: 'status'; data: StreamStatus }
+  | { type: 'ws'; data: { status: WsStatus } };
 
 export type EventHandler<T = WhipEvent> = (event: T) => void;
 
