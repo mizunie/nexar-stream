@@ -437,7 +437,6 @@ export class WhipClient {
   private _cleanupWS(): void {
     if (this._pingTimer) { clearInterval(this._pingTimer); this._pingTimer = null; }
     if (this._reconnectTimer) { clearTimeout(this._reconnectTimer); this._reconnectTimer = null; }
-    this._reconnectAttempts = 0;
 
     if (this._ws) {
       this._ws.onopen = null;
