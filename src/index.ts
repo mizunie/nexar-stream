@@ -3,5 +3,5 @@ export { WhepClient } from './whep-client';
 export type {
   StreamConfig, StreamStatus, StreamState, DeviceState, WhipEvent,
   WhepConfig, WhepStatus, WhepState, WhepEvent,
-  EventHandler,
+  EventHandler, WsStatus
 } from './types';
