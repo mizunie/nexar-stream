@@ -1,6 +1,6 @@
 {
   "name": "nexar-stream",
-  "version": "1.1.9",
+  "version": "1.1.10",
   "description": "WebRTC WHIP streaming broadcast library for Nexar services.",
   "keywords": [
     "webrtc",
