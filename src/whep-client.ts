@@ -30,6 +30,8 @@ export class WhepClient {
   private _reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
   private _listeners = new Map<string, EventHandler[]>();
+  private _user: string | null = null;
+  private _pass: string | null = null;
 
   // ─── Helpers ───
   private get _apiUrl(): string { return this._config.apiUrl ?? DEFAULT_API_URL; }
@@ -79,12 +81,14 @@ export class WhepClient {
   // ═══════════════════════════════════════════
 
   /** Conecta WebSocket. El WHEP (WebRTC) se dispara automáticamente al recibir status "live". */
-  connect(token: string, videoEl: HTMLVideoElement, config?: WhepConfig): void {
+  connect(token: string, videoEl: HTMLVideoElement, config?: WhepConfig, user: string | null = null, pass: string | null = null): void {
     this._config = config ?? {} as WhepConfig;
     this._config.token = token;
     this._videoEl = videoEl;
     this._setStatus('connecting');
     this._connectWS();
+    this._user = user;
+    this._pass = pass;
   }
 
   /** Cierra WS + PC y resetea estado */
@@ -102,6 +106,14 @@ export class WhepClient {
   // ═══════════════════════════════════════════
   // WebSocket
   // ═══════════════════════════════════════════
+  setTurnServer(user: string, pass: string) {
+    this._user = user;
+    this._pass = pass;
+
+    if (this._status === 'playing') {
+      this._loadStream(this._user, this._pass);
+    }
+  }
 
   private _connectWS(): void {
     const url = `${this._wsUrl}/ws/rtc?token=${this._config.token}`;
@@ -124,7 +136,7 @@ export class WhepClient {
 
         if (data.status === 'live') {
           this._setStatus('playing');
-          this._loadStream();
+          this._loadStream(this._user, this._pass);
         } else if (data.status === 'ended') {
           this._setStatus('connected');
         } else if (data.status === 'info' && data.viewers !== undefined) {
