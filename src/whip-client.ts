@@ -186,10 +186,10 @@ export class WhipClient {
   // Start (HTTP WHIP + WebSocket ICE)
   // ═══════════════════════════════════════════
 
-  async start(): Promise<void> {
+  async start(user: string | null = null, pass: string | null = null): Promise<void> {
     if (this._pc) { _log(this._debug, 'Transmisión ya activa'); return; }
     if (!this._config.token) throw new Error('StreamConfig.token es requerido para iniciar transmisión');
-    
+
     this._connectWS();
     this._setStatus('connecting');
 
@@ -197,9 +197,26 @@ export class WhipClient {
       if (!this._stream) await this._initStream();
 
       // 1. Crear PeerConnection
-      this._pc = new RTCPeerConnection({
-        iceServers: this._config.iceServers ?? DEFAULT_ICE_SERVERS,
-      });
+      if (user && pass) {
+        this._pc = new RTCPeerConnection({
+          iceServers: this._config.iceServers ?? [
+            {
+              urls: [
+                'stun:stun.cloudflare.com:3478',
+                'turn:turn.cloudflare.com:3478?transport=udp',
+                'turn:turn.cloudflare.com:3478?transport=tcp',
+                'turns:turn.cloudflare.com:5349?transport=tcp',
+              ],
+              username: user,
+              credential: pass,
+            },
+          ],
+        });
+      } else {
+        this._pc = new RTCPeerConnection({
+          iceServers: this._config.iceServers ?? DEFAULT_ICE_SERVERS,
+        });
+      }
 
       // 2. Añadir tracks locales
       const tracks = this._stream!.getTracks();
