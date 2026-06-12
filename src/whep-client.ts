@@ -151,11 +151,22 @@ export class WhepClient {
   // WHEP (WebRTC player — recibe stream)
   // ═══════════════════════════════════════════
 
-  private async _loadStream(): Promise<void> {
+  private async _loadStream(user: string | null = null, pass: string | null = null): Promise<void> {
     if (!this._videoEl) return;
 
     const resourceUrl = `${this._apiUrl}${this._whepPath}`;
-    const iceServers = this._config.iceServers ?? DEFAULT_ICE_SERVERS;
+    const iceServers = (user && pass) ? [
+      {
+        urls: [
+          'stun:stun.cloudflare.com:3478',
+          'turn:turn.cloudflare.com:3478?transport=udp',
+          'turn:turn.cloudflare.com:3478?transport=tcp',
+          'turns:turn.cloudflare.com:5349?transport=tcp',
+        ],
+        username: user,
+        credential: pass,
+      },
+    ] : this._config.iceServers ?? DEFAULT_ICE_SERVERS;
 
     try {
       if (this._pc) { this._pc.close(); this._pc = null; }
