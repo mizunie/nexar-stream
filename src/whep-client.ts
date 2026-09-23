@@ -142,8 +142,10 @@ export class WhepClient {
         } else if (data.status === 'info' && data.viewers !== undefined) {
           this._viewers = data.viewers as number;
           this._emit('state', this._getState());
-        }
-      } catch { /* ignorar */ }
+        } 
+      } catch {
+        this._emit('plano', evt.data);
+      }
     };
 
     this._ws.onerror = () => {

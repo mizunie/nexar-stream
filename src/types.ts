@@ -69,5 +69,6 @@ export interface WhepState {
 export type WhepEvent =
   | { type: 'state'; data: WhepState }
   | { type: 'message'; data: Record<string, any> }
+  | { type: 'plano'; data: string }
   | { type: 'error'; data: Error }
   | { type: 'status'; data: WhepStatus };
